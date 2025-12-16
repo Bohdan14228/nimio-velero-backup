@@ -1,0 +1,42 @@
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: vault-consul-backup
+  namespace: velero
+spec:
+  # Run at minute 18 of every hour
+  schedule: "18 * * * *"
+
+  template:
+    defaultVolumesToFsBackup: true #defaultVolumesToRestic: true
+    ttl: 720h0m0s
+
+    includedNamespaces: # какие неймспейсы будут бэкапится
+      #- vault
+      - default
+      - kube-node-lease  
+      - kube-public      
+      - kube-system 
+
+    includedResources: # какие типы обьектов 
+      - pv
+      - pvc
+      - secret
+      - configmap
+      - deployment
+      - service
+      - statefulset
+      - pod
+      - ingress
+      - replicaset
+
+    includeClusterResources: true
+
+    snapshotVolumes: false
+
+    # Where to store the tarball and logs (BackupStorageLocation name)
+    storageLocation: k8s-backup
+
+    # VolumeSnapshotLocations (обычно не нужно для MinIO/restic, но оставляю как у тебя)
+    volumeSnapshotLocations:
+      - k8s-backup

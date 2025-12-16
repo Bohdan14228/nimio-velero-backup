@@ -1,0 +1,454 @@
+##
+## Configuration settings that directly affect the Velero deployment YAML.
+##
+
+# Details of the container image to use in the Velero deployment & daemonset
+# (if enabling restic). Required.
+
+# image:
+#  repository: velero/velero
+  # tag: v1.8.1
+#  tag: v1.9.0-rc.2
+  # Digest value example: sha256:d238835e151cec91c6a811fe3a89a66d3231d9f64d09e5f3c4955267
+  # If used, it will take precedence over the image.tag.
+  # digest:
+#  pullPolicy: Always
+
+# One or more secrets to be used when pulling images
+imagePullSecrets: []
+# - registrySecretName
+
+# Annotations to add to the Velero deployment. Optional.
+# If you are using reloader use the following annotation with your VELERO_SECRET_NAME
+annotations: {}
+# secret.reloader.stakater.com/reload: "<VELERO_SECRET_NAME>"
+
+# Labels to add to the Velero deployment. Optional.
+labels: {}
+
+# Annotations to add to the Velero deployment's pod template. Optional.
+# If using kube2iam or kiam, use the following annotation with your AWS_ACCOUNT_ID
+# and VELERO_ROLE_NAME filled in
+podAnnotations: {}
+# iam.amazonaws.com/role: "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<VELERO_ROLE_NAME>"
+
+# Additional pod labels for Velero deployment's template. Optional
+# ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+podLabels: {}
+
+# Resource requests/limits to specify for the Velero deployment.
+# https://velero.io/docs/v1.6/customize-installation/#customize-resource-requests-and-limits
+resources:
+  requests:
+    cpu: 1m
+    memory: 128Mi
+  limits:
+    cpu: 1000m
+    memory: 2048Mi
+
+# Configure the dnsPolicy of the Velero deployment
+# See: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+dnsPolicy: ClusterFirst
+
+# Init containers to add to the Velero deployment's pod spec.
+# At least one plugin provider is required.
+# If the value is a string then it is evaluated as a template.
+initContainers:
+  # - name: velero-plugin-for-csi
+  #   image: velero/velero-plugin-for-csi:v0.3.0-rc.1
+  #   imagePullPolicy: IfNotPresent
+  #   volumeMounts:
+  #     - mountPath: /target
+  #       name: plugins
+
+  - name: velero-plugin-for-aws
+    image: velero/velero-plugin-for-aws:v1.4.1
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+
+# SecurityContext to use for the Velero deployment. Optional.
+# Set fsGroup for AWS IAM Roles for Service Accounts
+# See: https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html
+podSecurityContext: {}
+# fsGroup: 1337
+
+# Container level Security Context for the 'velero' container. Optional.
+# See: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+containerSecurityContext: {}
+# allowPrivilegeEscalation: false
+# capabilities:
+#   drop: ["ALL"]
+#   add: []
+# readOnlyRootFilesystem: true
+
+# Pod priority class name to use for the Velero deployment. Optional.
+priorityClassName: ""
+
+# Tolerations to use for the Velero deployment. Optional.
+tolerations: []
+
+# Affinity to use for the Velero deployment. Optional.
+affinity: {}
+
+# Node selector to use for the Velero deployment. Optional.
+nodeSelector: {}
+
+# Extra volumes for the Velero deployment. Optional.
+extraVolumes: []
+
+# Extra volumeMounts for the Velero deployment. Optional.
+extraVolumeMounts: []
+
+# Extra Kubernetes manifests to deploy
+extraObjects: []
+# - apiVersion: secrets-store.csi.x-k8s.io/v1
+#   kind: SecretProviderClass
+#   metadata:
+#     name: velero-secrets-store
+#   spec:
+#     provider: aws
+#     parameters:
+#       objects: |
+#         - objectName: "velero"
+#           objectType: "secretsmanager"
+#           jmesPath:
+#             - path: "access_key"
+#               objectAlias: "access_key"
+#             - path: "secret_key"
+#               objectAlias: "secret_key"
+#     secretObjects:
+#       - data:
+#           - key: access_key
+#             objectName: client-id
+#           - key: client-secret
+#             objectName: client-secret
+#         secretName: velero-secrets-store
+#         type: Opaque
+
+# Settings for Velero's Prometheus metrics
+metrics:
+  enabled: true
+  scrapeInterval: 30s
+  scrapeTimeout: 10s
+
+# Service metadata if metrics are enabled
+service:
+  annotations: {}
+  labels: {}
+
+# Pod annotations for Prometheus
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8085"
+  prometheus.io/path: "/metrics"
+
+serviceMonitor:
+  enabled: false
+  additionalLabels: {}
+  # namespace:
+
+
+kubectl:
+  image:
+    repository: docker.io/bitnami/kubectl
+    # Digest value example: sha256:d238835e151cec91c6a811fe3a89a66d3231d9f64d09e5f3c49552
+    # If used, it will take precedence over the kubectl.image.tag.
+    # digest:
+    #
+    # kubectl image tag. If used, it will take precedence over the cluster Kubernetes version.
+    # tag: 1.16.15
+
+  # Container level Security Context for the 'kubectl' container of the CRD jobs. Optional.
+  # See: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+  containerSecurityContext: {}
+
+  # Resource requests/limits to specify for the upgrade/cleanup job. Optional.
+  resources: {}
+
+  # Annotations to set for the upgrade/cleanup job. Optional.
+  annotations: {}
+
+  # Labels to set for the upgrade/cleanup job. Optional.
+  labels: {}
+
+# This job upgrades the CRDs.
+upgradeCRDs: false
+
+# This job is meant primarily for cleaning up CRDs on CI systems.
+# Using this on production systems, especially those that have multiple releases of Velero.
+cleanUpCRDs: false
+
+
+##
+## Parameters for the `default` BackupStorageLocation and VolumeSnapshotLocation,
+## and additional server settings.
+##
+
+configuration:
+  # Cloud provider being used (e.g. aws, azure, gcp).
+  #provider: aws
+
+  # Parameters for the default BackupStorageLocation.
+  # See: https://velero.io/docs/v1.6/api-types/backupstoragelocation/
+  backupStorageLocation:
+    # Name of the backup storage location.
+    - name: k8s-backup
+
+    # Provider for the backup storage location.
+      provider: aws
+
+      # Bucket name where backups are stored.
+      bucket: backup-stg #k8s-backup
+
+      # Directory prefix inside the bucket (optional).
+      # prefix:
+
+      # Mark this location as default.
+      default: true
+
+      # Access mode for Velero.
+      # ReadWrite | ReadOnly
+      accessMode: ReadWrite
+
+      # Provider-specific configuration.
+      config:
+        region: eu-east-1
+        s3ForcePathStyle: "true"
+        s3Url: http://64.226.73.55:9000
+        insecureSkipTLSVerify: true
+
+      # kmsKeyId:
+      # resourceGroup:
+      # subscriptionId:
+      # storageAccount:
+
+    # publicUrl:
+    # serviceAccount:
+
+
+  # Parameters for the default VolumeSnapshotLocation.
+  # See: https://velero.io/docs/v1.6/api-types/volumesnapshotlocation/
+  volumeSnapshotLocation:
+    # Name of the volume snapshot location.
+    - name: k8s-backup
+
+    # Provider for volume snapshots.
+    # If omitted, configuration.provider will be used.
+      provider: aws
+
+      # Mark this location as default.
+      default: true
+
+      # caCert: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t...
+
+      # Provider-specific configuration.
+      config:
+        s3Url: http://64.226.73.55:9000
+        s3ForcePathStyle: "true"
+        bucket: backup-stg
+        profile: default
+        #profile: velero
+        insecureSkipTLSVerify: "true"
+        region: eu-east-1
+
+        # apiTimeout:
+        # resourceGroup:
+        # subscriptionId:
+        # incremental:
+        # snapshotLocation:
+        # project:
+
+# These are server-level settings passed as CLI flags to the `velero server` command.
+# Velero uses default values if they're not passed in, so they only need to be explicitly
+# set here if using a non-default value. The `velero server` default values are shown below.
+
+# `velero server` default: 1m
+backupSyncPeriod:
+
+# `velero server` default: 1h
+fsBackupTimeout: #resticTimeout:
+
+# `velero server` default:
+# namespaces,persistentvolumes,persistentvolumeclaims,secrets,configmaps,services,endpoints
+restoreResourcePriorities:
+
+# `velero server` default: false
+restoreOnlyMode:
+
+# `velero server` default: 20.0
+clientQPS:
+
+# `velero server` default: 30
+clientBurst:
+
+# `velero server` default: empty
+disableControllers:
+
+# Additional key/value pairs to be used as environment variables
+extraEnvVars: {}
+
+# Comma separated list of Velero feature flags.
+# Example: EnableCSI
+features:
+
+# Set log-level for Velero pod.
+# Default: info
+# Options: debug, warning, error, fatal
+logLevel: debug
+
+# Set log-format for Velero pod.
+# Default: text
+# Options: text, json
+logFormat:
+
+# Backup all pod volumes with restic by default, without requiring pod annotations
+defaultVolumesToFsBackup: true #defaultVolumesToRestic: true
+
+# How often `restic prune` is run for restic repositories by default
+# Default: 168h
+defaultRepoMaintainFrequency: #defaultResticPruneFrequency:
+
+##
+## End of backup/snapshot location settings.
+##
+
+##
+## Settings for additional Velero resources.
+##
+
+rbac:
+  # Whether to create the Velero role and role binding
+  create: true
+
+  # Whether to create the cluster role binding to give administrator permissions to Velero
+  clusterAdministrator: true
+
+  # Name of the ClusterRole
+  clusterAdministratorName: cluster-admin
+
+# Information about the Kubernetes service account Velero uses
+serviceAccount:
+  server:
+    create: true
+    name:
+    annotations:
+    labels:
+
+# Info about the secret to be used by the Velero deployment
+credentials:
+  # Whether a secret should be used
+  useSecret: true
+
+  # Name of the secret to create if `useSecret` is true and `existingSecret` is empty
+  name:
+
+  # Name of a pre-existing secret in the Velero namespace
+  existingSecret: velero-bucket-creds
+
+  # Secret contents (used only if existingSecret is empty)
+  secretContents: {}
+  # cloud: |
+  #   [default]
+  #   aws_access_key_id=<REDACTED>
+  #   aws_secret_access_key=<REDACTED>
+
+  # Additional environment variables
+  extraEnvVars: {}
+
+  # Name of a pre-existing secret used to load extra environment variables
+  extraSecretRef: ""
+
+# Whether to create BackupStorageLocation CRD
+backupsEnabled: true
+
+# Whether to create VolumeSnapshotLocation CRD
+snapshotsEnabled: true
+
+# Whether to deploy the Restic daemonset
+deployNodeAgent: true #deployRestic: true
+
+nodeAgent: #restic:
+  podVolumePath: /var/lib/kubelet/pods
+  privileged: true
+
+  # Pod priority class name to use for the Restic daemonset
+  priorityClassName: ""
+
+  # Resource requests/limits for the Restic daemonset
+  resources:
+    requests:
+      cpu: 1m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+
+  # Tolerations for the Restic daemonset
+  tolerations: []
+
+  # Annotations for the Restic daemonset
+  annotations: {}
+
+  # Labels for the Restic daemonset
+  labels: {}
+
+  # Map /scratch to emptyDir
+  useScratchEmptyDir: true
+
+  # Extra volumes for the Restic daemonset
+  extraVolumes: []
+
+  # Extra volumeMounts for the Restic daemonset
+  extraVolumeMounts: []
+
+# Configure the dnsPolicy of the Restic daemonset
+# dnsPolicy: ClusterFirst
+
+
+# Configure the dnsPolicy of the Velero / Restic pods
+# See: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+dnsPolicy: ClusterFirst
+
+# SecurityContext to use for the Velero deployment. Optional.
+# Set fsGroup for AWS IAM Roles for Service Accounts
+# See: https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html
+podSecurityContext:
+  runAsUser: 0
+  # fsGroup: 1337
+
+# Container-level Security Context for the 'restic' container of the Restic DaemonSet.
+# See: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+containerSecurityContext: {}
+
+# Node selector to use for the Restic DaemonSet. Optional.
+nodeSelector: {}
+
+# Backup schedules to create.
+# Example:
+# schedules:
+#   mybackup:
+#     disabled: false
+#     labels:
+#       myenv: foo
+#     annotations:
+#       myenv: foo
+#     schedule: "0 0 * * *"
+#     useOwnerReferencesInBackup: false
+#     template:
+#       ttl: "240h"
+#       includedNamespaces:
+#         - foo
+schedules: {}
+
+# Velero ConfigMaps.
+# Example:
+# configMaps:
+#   restic-restore-action-config:
+#     labels:
+#       velero.io/plugin-config: ""
+#       velero.io/restic: RestoreItemAction
+#     data:
+#       image: velero/velero-restic-restore-helper:v1.8.1
+configMaps: {}
