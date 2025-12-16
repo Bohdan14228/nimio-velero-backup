@@ -92,7 +92,10 @@ Architecture:
   spec:
     backupName: test-backup-now
   EOF
-  ```
+
+  kubectl get restores -n velero
+  kubectl describe restore -n velero <name_backup>  ## annotation what has been restored
+  ``` 
 
 Options
   ```bash
